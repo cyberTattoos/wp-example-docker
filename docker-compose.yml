@@ -1,0 +1,68 @@
+version: "3.7"
+
+services:
+  web:
+    image: wordpress:latest # https://hub.docker.com/_/wordpress/
+    container_name: example_wp
+    ports:
+      - 80:80 # change ip if required
+    volumes:
+      - ./config/php.conf.d/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+      - ./wp-app:/var/www/html # Full wordpress project
+      #- ./plugin-name/trunk/:/var/www/html/wp-content/plugins/plugin-name # Plugin development
+      #- ./theme-name/trunk/:/var/www/html/wp-content/themes/theme-name # Theme development
+    environment:
+      - WORDPRESS_SITE_MAIN
+      # - WORDPRESS_SITE_MARKETING
+      - WORDPRESS_DB_HOST
+      - WORDPRESS_DB_NAME
+      - WORDPRESS_DB_USER
+      - WORDPRESS_DB_PORT
+      - WORDPRESS_DB_PASSWORD
+
+    networks:
+      - backend
+    depends_on:
+      - db
+
+  
+  db:
+    image: mysql:latest
+    container_name: example_wp_db
+    networks:
+      - backend
+    ports:
+      - "${MYSQL_EXTERNAL_PORT}:3306"
+    command: [
+        '--default_authentication_plugin=mysql_native_password',
+        '--character-set-server=utf8mb4',
+        '--collation-server=utf8mb4_unicode_ci'
+    ]
+    restart: always
+    volumes:
+      - ./wp-data:/docker-entrypoint-initdb.d
+      - db_data:/var/lib/mysql
+    environment:
+      - MYSQL_USER
+      - MYSQL_ROOT_PASSWORD
+      - MYSQL_EXTERNAL_PORT
+
+  wpcli:
+    container_name: example_wp_cli
+    tty: true
+    image: wordpress:cli
+    volumes:
+      - ./config/php.conf.ini:/usr/local/etc/php/conf.d/conf.ini
+      - ./wp-app:/var/www/html
+    environment:
+      - DOMAIN_CURRENT_SITE="${WORDPRESS_SITE_MAIN}"
+    depends_on:
+      - web
+    networks:
+      - backend
+networks:
+  backend:
+    name: example_wp
+
+volumes:
+  db_data:
